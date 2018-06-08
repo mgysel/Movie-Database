@@ -1,0 +1,241 @@
+---
+title: "Movie Database"
+output: html_notebook
+---
+
+```{r}
+# Load packages
+# Data visualization
+library(ggplot2)
+library(lubridate)
+library(dplyr)
+library(stringr)
+```
+
+```{r}
+# Import data
+movies <- read.csv('data/movies-clean.csv')
+```
+
+```{r}
+# Change datatypes
+movies$release_date <- as_date(movies$release_date)
+```
+
+
+
+
+# Question 1: How have movie genres changed over time?
+
+```{r}
+# Graph number of movies over time, by each genre
+ggplot(data=movies, aes(x=release_year)) +
+  geom_freqpoly(aes(color=genre_one))
+```
+
+```{r}
+# Plot percentage of movies each year per genre, by each genre
+# Calculate
+movies.proportions <- movies %>% 
+  group_by(release_year, genre_one) %>% 
+  summarise(n = n()) %>%
+  mutate(freq = n/sum(n))
+
+# Plot
+ggplot(data=subset(movies.proportions, genre_one=='Drama' | genre_one=='Comedy' | genre_one=='Action' | genre_one=='Horror' | genre_one=='Thriller'), aes(x=release_year, y=freq)) +
+  geom_smooth(aes(color=genre_one))
+```
+
+
+
+
+# Question 2: How do the attributes differ between Universal Pictures and Paramount Pictures?
+
+Check:
+- number of films
+- popularity
+- runtime
+- genre_one
+- Vote_average
+- budget_adj
+- revenue_adj
+
+```{r}
+# Create df of Universal Pictures films
+universal.pictures <- movies %>%
+  filter(str_detect(production_companies, 'Universal Pictures'))
+
+# Create df of Paramount Pictures films
+paramount.pictures <- movies %>%
+  filter(str_detect(production_companies, 'Paramount Pictures'))
+```
+
+
+## Number of Films
+```{r}
+# Graph number of films for Universal Pictures and Paramount over time
+ggplot() +
+  geom_freqpoly(data=universal.pictures, aes(x=release_year, color='Universal Pictures')) +
+  geom_freqpoly(data=paramount.pictures, aes(x=release_year, color='Paramount Pictures'))
+```
+
+
+## Popularity
+```{r}
+# Graph popularity over time for Universal Pictures films and Paramount Pictures films
+ggplot() +
+  geom_freqpoly(data=universal.pictures, aes(x=release_date, color='Universal Pictures')) +
+  geom_smooth(data=paramount.pictures, aes(x=release_date, color='Paramount Pictures'))
+```
+
+
+## Runtime
+```{r}
+# Graph average runtime of films over time, for universal/paramount
+ggplot() + 
+  geom_smooth(data=universal.pictures %>% group_by(release_year) %>% summarise(mean=mean(runtime)), aes(x=release_year, y=mean, color='Universal')) +
+  geom_smooth(data=paramount.pictures %>% group_by(release_year) %>% summarise(mean=mean(runtime)), aes(x=release_year, y=mean, color='Paramount'))
+```
+
+
+## Genre
+```{r}
+# Plot graphs of universal genre vs. paramount genre
+
+# Drama
+ggplot() +
+  geom_freqpoly(data=subset(universal.pictures, genre_one=='Drama'), aes(x=release_year, color='Universal')) +
+  geom_freqpoly(data=subset(paramount.pictures, genre_one=='Drama'), aes(x=release_year, color='Paramount'))
+
+# Comedy
+ggplot() +
+  geom_freqpoly(data=subset(universal.pictures, genre_one=='Comedy'), aes(x=release_year, color='Universal')) +
+  geom_freqpoly(data=subset(paramount.pictures, genre_one=='Comedy'), aes(x=release_year, color='Paramount'))
+
+# Action
+ggplot() +
+  geom_freqpoly(data=subset(universal.pictures, genre_one=='Action'), aes(x=release_year, color='Universal')) +
+  geom_freqpoly(data=subset(paramount.pictures, genre_one=='Action'), aes(x=release_year, color='Paramount'))
+```
+
+
+## Vote Average
+```{r}
+# Plot Vote Average over time for Paramount and Universal
+ggplot() +
+  geom_smooth(data=universal.pictures %>% group_by(release_year) %>% summarise(mean=mean(vote_average)), aes(x=release_year, y=mean, color='Universal')) +
+  geom_smooth(data=paramount.pictures %>% group_by(release_year) %>% summarise(mean=mean(vote_average)), aes(x=release_year, y=mean, color='Paramount'))
+```
+
+
+## Budget
+```{r}
+# Graph the adjusted budgets over time for universal/paramount
+ggplot() +
+  geom_smooth(data=universal.pictures %>% group_by(release_year) %>% summarise(budget=mean(budget_adj)), aes(x=release_year, y=budget, color='Universal')) + 
+  geom_smooth(data=paramount.pictures %>% group_by(release_year) %>% summarise(budget=mean(budget_adj)), aes(x=release_year, y=budget, color='Paramount'))
+
+```
+
+
+## Revenue
+```{r}
+# Graph Release Year vs. Revenue for Universal/Paramount pictures
+ggplot() +
+  geom_smooth(data=universal.pictures %>% group_by(release_year) %>% summarise(revenue=mean(revenue_adj)), aes(x=release_year, y=revenue, color='Universal')) +
+  geom_smooth(data=paramount.pictures %>% group_by(release_year) %>% summarise(revenue=mean(revenue_adj)), aes(x=release_year, y=revenue, color='Paramount'))
+
+``` 
+
+
+
+
+# Question 3: How have movies based on novels performed relative to movies not based on novels?
+
+Performance Metrics to look at:
+- popularity
+- runtime
+- vote_average
+- budget_adj
+- revenue_adj
+
+```{r}
+# Split data based on keywords containing 'based on novel'
+novel <- movies %>%
+  filter(str_detect(keywords, 'based on novel'))
+
+not.novel <- movies %>%
+  filter(!str_detect(keywords, 'based on novel'))
+```
+
+
+## Popularity
+```{r}
+# Plot popularity over time for novel, non-novel films
+ggplot() +
+  geom_smooth(data=novel %>% group_by(release_year) %>% summarise(popularity=mean(popularity)), aes(x=release_year, y=popularity, color='novel')) + 
+  geom_smooth(data=not.novel %>% group_by(release_year) %>% summarise(popularity=mean(popularity)), aes(x=release_year, y=popularity, color='not novel')) 
+```
+
+
+## Runtime
+```{r}
+# Plot runtime of novel, non-novel films
+ggplot() +
+  geom_smooth(data=novel %>% group_by(release_year) %>% summarise(runtime=mean(runtime)), aes(x=release_year, y=runtime, color='novel')) +
+  geom_smooth(data=not.novel %>% group_by(release_year) %>% summarise(runtime=mean(runtime)), aes(x=release_year, y=runtime, color='not novel')) 
+```
+
+
+## Vote Average
+```{r}
+# Plot Vote Average of novel, non-novel films
+ggplot() +
+  geom_smooth(data=novel %>% group_by(release_year) %>% summarise(vote_average=mean(vote_average)), aes(x=release_year, y=vote_average, color='novel')) +
+  geom_smooth(data=not.novel %>% group_by(release_year) %>% summarise(vote_average=mean(vote_average)), aes(x=release_year, y=vote_average, color='not novel')) 
+```
+
+
+## Budget
+```{r}
+# Plot Budget of novel, non-novel films
+ggplot() +
+  geom_smooth(data=novel %>% group_by(release_year) %>% summarise(budget=mean(budget_adj)), aes(x=release_year, y=budget, color='novel')) +
+  geom_smooth(data=not.novel %>% group_by(release_year) %>% summarise(budget=mean(budget_adj)), aes(x=release_year, y=budget, color='not novel')) 
+```
+
+
+## Revenue
+```{r}
+# Plot Revenue of novel, non-novel films
+ggplot() +
+  geom_smooth(data=novel %>% group_by(release_year) %>% summarise(revenue=mean(revenue_adj)), aes(x=release_year, y=revenue, color='novel')) +
+  geom_smooth(data=not.novel %>% group_by(release_year) %>% summarise(revenue=mean(revenue_adj)), aes(x=release_year, y=revenue, color='not novel')) 
+```
+
+
+
+
+# Question 4: Do budget and revenue, and budget and popularity have any correlation?
+
+```{r}
+# Plot budget and revenue
+ggplot(data=movies, aes(x=budget_adj, y=revenue_adj)) +
+  geom_point() +
+  geom_smooth(method='lm')
+
+# Plot budget and popularity
+ggplot(data=movies, aes(x=budget_adj, y=popularity)) +
+  geom_point() +
+  geom_smooth(method='lm')
+
+# Plot revenue and popularity
+ggplot(data=movies, aes(x=revenue, y=popularity)) +
+  geom_point() +
+  geom_smooth(method='lm')
+```
+
+
+
+
+
